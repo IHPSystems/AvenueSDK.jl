@@ -11,8 +11,8 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
 jobs:
-  test:
-    name: Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
+  build:
+    name: build - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -37,9 +37,47 @@ jobs:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
       - uses: julia-actions/cache@v1
-      - uses: julia-actions/julia-buildpkg@v1
-      - uses: julia-actions/julia-runtest@v1
-      - uses: julia-actions/julia-processcoverage@v1
-      - uses: codecov/codecov-action@v2
+      - if: startsWith(matrix.os, 'ubuntu')
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential
+      - if: startsWith(matrix.os, 'ubuntu') && startsWith(matrix.arch, 'x86')
+        run: sudo apt-get install gcc-multilib
+      - run: julia ext/AvenueTools/scripts/install_package_compiler.jl
+      - run: julia --project ext/AvenueTools/scripts/create_sysimage.jl
+      - uses: actions/upload-artifact@v2
         with:
-          files: lcov.info
+          name: build-julia_v${{ matrix.version }}-${{ matrix.os }}-${{ matrix.arch }}
+          path: build
+  validate:
+    name: validate - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
+    needs: build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - '1.6'
+          - '1.7'
+        os:
+          - ubuntu-latest
+          - macOS-latest
+          - windows-latest
+        arch:
+          - x64
+          - x86
+        exclude:
+          - os: macOS-latest
+            arch: x86
+    steps:
+      - uses: actions/checkout@v2
+      - uses: julia-actions/setup-julia@v1
+        with:
+          version: ${{ matrix.version }}
+          arch: ${{ matrix.arch }}
+      - uses: julia-actions/cache@v1
+      - uses: actions/download-artifact@v2
+        with:
+          name: build-julia_v${{ matrix.version }}-${{ matrix.os }}-${{ matrix.arch }}
+          path: build
+      - run: julia --project ext/AvenueTools/scripts/validate_sysimage.jl
