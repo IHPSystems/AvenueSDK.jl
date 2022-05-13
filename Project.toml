@@ -3,5 +3,9 @@ uuid = "950aa128-ac17-4e38-ab79-1c37fd69bc03"
 authors = ["IHP Systems R&D <research@ihp.dk>"]
 version = "0.1.0"
 
+[deps]
+Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
+
 [compat]
 julia = "1"
+Revise = "3"
