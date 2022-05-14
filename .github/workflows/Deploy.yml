@@ -1,0 +1,47 @@
+name: Deploy
+on:
+  push: # TODO Needs to be mutually exclusive with CI.yml to avoid duplicate CI runs
+    branches:
+      - master
+      - feature/* # TODO remove
+    tags: '*'
+  pull_request: # TODO Needs to be mutually exclusive with CI.yml to avoid duplicate CI runs
+  schedule:
+    - cron: '0 0 * * * '
+jobs:
+  ci:
+    uses: ./.github/workflows/CI.yml
+  deploy:
+    name: deploy - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
+    needs: ci
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - '1.6'
+          - '1.7'
+        os:
+          - ubuntu-latest
+          - macOS-latest
+          - windows-latest
+        arch:
+          - x64
+          - x86
+        exclude:
+          - os: macOS-latest
+            arch: x86
+    steps:
+      - uses: actions/checkout@v2
+      - uses: julia-actions/setup-julia@v1
+        with:
+          version: ${{ matrix.version }}
+          arch: ${{ matrix.arch }}
+      - uses: julia-actions/cache@v1
+      - uses: actions/download-artifact@v2
+        with:
+          name: build-julia_v${{ matrix.version }}-${{ matrix.os }}-${{ matrix.arch }}
+          path: build
+      - run: |
+          ls -la
+          ls -la build
