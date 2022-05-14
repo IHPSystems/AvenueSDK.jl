@@ -44,6 +44,7 @@ jobs:
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
+      - run: which julia
       - uses: julia-actions/cache@v1
       - if: startsWith(matrix.os, 'ubuntu')
         run: |
